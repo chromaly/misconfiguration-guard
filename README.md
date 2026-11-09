@@ -1,4 +1,4 @@
-<img width="620" height="319" alt="Screenshot 2026-11-08 at 11 57 35 PM" src="https://github.com/user-attachments/assets/634d12f9-909c-4031-9740-1126923fa751" />
+
 # Misconfiguration Guard
 
 Misconfiguration Guard is an AI-assisted security program that investigates security misconfigurations in application source code and configuration files. It specifically focuses on publicly exposed configuration, error information, and diagnostic endpoints without authentication. These three vulnerabilities are part of the OWASP A02:2025 – Security Misconfiguration risk category. We are trying to mitigate the improper or insecure configuration of application servers, frameworks, or default settings that leave systems open to attack.
@@ -16,7 +16,6 @@ Based on [lwu1822/red-vs-blue-starter]
 ## How it Works
 
 The project has three separate agent entry points. Each uses `llm.py` to communicate with the language model and `tools.py` to interact with external files and the local practice application. 
-<img width="602" height="320" alt="Screenshot 2026-11-08 at 11 53 30 PM" src="https://github.com/user-attachments/assets/00ea1abd-369a-4862-95d7-77fd98afa8b6" />
 
 ### Investigation Agent - Red Team
 
@@ -38,10 +37,6 @@ Github Actions runs `agent/ci_scan.py` when a same-repository pull request is op
 
 This scanner doesn't run the investigation or defense agent loops (Red or Blue team), and only performs source review.
 
-[View the demonstration pull request](https://github.com/chromaly/misconfiguration-guard/pull/1)
-
-<img width="622" height="319" alt="Screenshot 2026-11-08 at 11 57 51 PM" src="https://github.com/user-attachments/assets/2da7d370-5ee0-4c86-be19-2add94fe7f73" />
-
 ### Agent Loop
 
 Each agent asks the model for one JSON action, validates and dispatches
@@ -53,36 +48,149 @@ The tools provide restrictions independently of the model's instructions,
 including directory boundaries, localhost-only HTTP requests without
 redirect following, and constrained defense output.
 
-## How it works
-
 ## Setup and usage
+
+Requires Python 3.10 or newer.
+
+```bash
+git clone https://github.com/chromaly/misconfiguration-guard.git
+cd misconfiguration-guard
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+For a fresh installation, copy `.env.example` to `.env`. Set
+`LLM_API_KEY`, `LLM_BASE_URL`, and `LLM_MODEL` to your provider's working
+configuration. Do not commit `.env` or real credentials.
+
+Start the local practice application:
+
+```bash
+python target_app/app.py
+```
+
+In another terminal with the virtual environment activated:
+
+```bash
+python agent/attack_agent.py target_app
+```
+
+Generate a proposed fix:
+
+```bash
+python agent/defense_agent.py target_app
+```
+
+Review `target_app/app_fixed.py` before executing it, then test it:
+
+```bash
+python -m unittest discover -s tests -p test_fixed.py -v
+```
+
+Run the complete test suite:
+
+```bash
+python -m unittest discover -s tests -v
+```
+
+Fixed-application tests are skipped when `app_fixed.py` is absent.
+A skipped test does not demonstrate successful remediation.
+
+### GitHub Actions Configuration
+
+Add the repository secret `LLM_API_KEY` and repository variables
+`LLM_BASE_URL` and `LLM_MODEL` under Settings → Secrets and variables →
+Actions.
+
+Opening or updating a same-repository PR triggers the workflow.
+The scanner posts its findings as a PR comment. Fork PRs run tests but
+skip the model scan. Manual workflow runs produce a summary and artifact
+without posting a PR comment.
 
 ## Experiments and results
 
+### Automated Pull Request Review
+
+[View the demonstration pull request](https://github.com/chromaly/misconfiguration-guard/pull/1)
+
+<img width="622" height="319" alt="Screenshot 2026-11-08 at 11 57 51 PM" src="https://github.com/user-attachments/assets/2da7d370-5ee0-4c86-be19-2add94fe7f73" />
+
+The workflow successfully ran the regression tests and source-only scan, then posted these findings on the PR. The reported issues included:
+
+- `/debug/config`: internal demo configuration returned without configuration.
+- `/public-config/settings.json`: public access to fake configuration values.
+
+The target intentionally contained these exposures. Passing these workflow checks demonstrates that the automation completed, NOT that the application is secure (it wasn't!)
+
+The model also used a directory-traversal label. Public configuration exposure was supported by the source, but directory traversal was NOT established. This indicates that model findings still need further review.
+
+### External Repository Evaluation
+
+The source-only scanner (Red team) was aso applied to downloaded public projects. These evaluations did not run the external applications or verify exploitation through HTTP, it was just through source code revisions.
+
+| Application | Revision | Scope |
+|---|---|---|
+| [Flaskr](https://github.com/pallets/flask/tree/main/examples/tutorial) | `49943b5a94413a530761350f04e896f76e8d620e` | `examples/tutorial/flaskr` |
+| [DigitalOcean Flask sample](https://github.com/digitalocean/sample-flask) | `3f2269883cf430cf93352a832da80fee4094f159` | Downloaded repository |
+| [Render Flask Hello World](https://github.com/render-examples/flask-hello-world) | `facfc73c44b35d00bb1f72e8986f0ea47cab0755` | Downloaded repository |
+| [DVWA](https://github.com/digininja/DVWA) | Revision not recorded in this writeup | Discoverable configuration and text files |
+
+These reports were saved locally as `flaskr-findings.md`, `digitalocean-findings.md`, `render-findings.md`, and `dwva-findings.md`. Model-generated findings are preliminary observations, not confirmed exploits.
+
+#### DVWA Compatibility Result
+
+Testing on the DVWA was meant to be edge case testing, as PHP application files were excluded by the discovery filter. Initially, I was trying to prove that the scanner would not work on all types of files, as it was not told to scan these types of files, yet however the scanner reported `allow_url_fopen = on` and `allow_url_incude = on` in `php.ini`. The PHP configuration files were still discoverable, demonstrating partial configuration-review compatibility.
+
+These settings alone do not prove an exploitable vulnerability. Application source analysis and runtime verification were not completed for this test.
+
 ## Prevention research
 
-## Limitations and next steps
+Preventing Security Misconfigurations in applications is one of the most important steps to securing code, especially with the introduction of AI agents and helpers automating code workflows.
 
+### Preventing Application Misconfigurations
 
-## Pull request scanning demonstration
+OWASP A02:2025 recommends repeatable configuration hardening, removing unnecessary functionality, reviewing security settings, and automatically verifying configurations.
 
-[Demo pull request with automated findings](https://github.com/chromaly/misconfiguration-guard/pull/1)
+For the issues invested in this project, relevant measures include:
 
-Opening and updating this PR triggered the regression tests and source-only
-security scanner. Both checks passed, and the scanner posted findings about
-public configuration exposure and an unauthenticated diagnostic route.
-Runtime verification was not performed by the CI scanner.
+- Keeping sensitive configuration OUTSIDE publicly served directories.
+- Removing unnecessary diagnostic routes and enforcing authentication and authentication.
+- Disabling production debugging and returning generic public errors, not specific ones.
+- Use platform secret management rather than embedding real credentials.
+- TESTING blocked exposure and normal application functionality.
 
-## External Application Testings
-1. Flaskr from pallets/flask
-Revision: 49943b5a94413a530761350f04e896f76e8d620e
-Scanned directory: examples/tutorial/flaskr
+All in all, make sure to test your code and inspect it for any type of misconfiguration or leaks! Having multiple types of evaluation techniques (ie. looking through code manually, using AI agents, programs like this one, or other techniques) being used in tandem reduces the chance of misconfigurations.
 
-2. digitalocean
-Revision: 3f2269883cf430cf93352a832da80fee4094f159
-Scanned directory: 
+Source: [OWASP A02:2025 — Security Misconfiguration](https://top10.owasp.org/2025/A02_2025-Security_Misconfiguration/)
 
-3. render's flask hello world
-Revision: facfc73c44b35d00bb1f72e8986f0ea47cab0755
+### Preventing Prompt Injection Against the Agent
 
-4. DVWA compatibility experiment: 
+Prompt injection is another concern that technically doesn't involve Security Misconfigurations, but instead this project as a whole. Malicious repository content may try to redirect the scanner rather than merely contain an application bug, which could lead to harmful unintended consequences.
+
+Relevant defenses include:
+
+- Treating repository comments, files, and HTTP responses as UNTRUSTED data. Rule of thumb: most responses should be UNTRUSTED by default.
+- Giving each agent ONLY the tools necessary for its task (Principle of Least Privilege)
+- Restricting file access and generated output paths.
+- Validating actions and reviewing findings against ACTUAL evidence.
+- Reviewing generated code before execution.
+- Evaluating the agent with adversarial inputs.
+
+This project combines prompt instructions with tool restrictions. It has clear, defined directory boundaries, can only send HTTP requests through localhost programs and cannot redirect following, CI tools are read-only, and defense outputs are restricted to `app_fixed.py`. 
+
+These controls reduce the likelihood and impact of prompt injection, reducing risk which is likelihood * impact, but still does not guarantee that the model will identify every issue or resist every injected instruction. Further defenses should be implemented before public usage.
+
+Source: [OWASP LLM Prompt Injection Prevention Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/LLM_Prompt_Injection_Prevention_Cheat_Sheet.html)
+
+## Limitations and Next Steps
+
+- The CI still performs source-only review, and does not verify any running applications. This could be implemented in the future to test preliminary projects.
+- Findings and cited evidence still require human review to determine where they were successful or not.
+- File discovery excludes PHP, JavaScript, and TypeScript application sources. Although PHP was somewhat read by the DVWA test, it's still indecisive and should not be used as a sign of proper integration.
+- The defender targets a single Python `app.py`, not entire folders or repositories.
+- Runtime verification of newly generated misconfiguration fixes are incomplete.
+- The original SQL injection flaws kept in `app.py` remain in the practice application since the model wasn't engineered to fix them, meaning other types of security vulnerabilities will still be present.
+- The prompt-injection comparison is still not completed or documented.
+
+In the future, I would like to expand this project to address some or all of the limitations mentioned above and bring it to a state of usefulness in my own code repositories or even as a potential code auditor for larger teams that reviews code workflows and ensures that no security misconfiguration or other type of cybersecurity vulnerability is present in an entire application stack.
