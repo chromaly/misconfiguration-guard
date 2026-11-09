@@ -1,0 +1,74 @@
+name: Security misconfiguration review
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - run: python -m unittest discover -s tests -v
+  scan:
+    permissions:
+      contents: read
+      pull-requests: write
+    # Forks get regression tests but never receive the model API key.
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r requirements.txt
+      - name: Read-only AI scan
+        env:
+          LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+          LLM_BASE_URL: ${{ vars.LLM_BASE_URL }}
+          LLM_MODEL: ${{ vars.LLM_MODEL }}
+        run: python agent/ci_scan.py > findings.md
+      - name: Publish job summary
+        if: always()
+        run: |
+          if [ -f findings.md ]; then
+            cat findings.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Scan did not produce a report.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-findings
+          path: findings.md
+      - name: Comment findings on the PR
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            let report = '## Scan incomplete\n\nThe security scanner did not produce a report. Check the Actions logs; this is not a clean security result.';
+            try {
+              const contents = fs.readFileSync('findings.md', 'utf8').trim();
+              if (contents) report = contents;
+            } catch (_) {}
+            // Leave room beneath GitHub's comment length limit.
+            const limit = 60000;
+            if (report.length > limit) {
+              report = report.slice(0, limit) + '\n\n_Report truncated. Download the full security-findings artifact from Actions._';
+            }
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: report,
+            });

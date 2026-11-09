@@ -11,8 +11,9 @@
 # =============================================================================
 
 import sqlite3
+from pathlib import Path
 
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_from_directory
 
 app = Flask(__name__)
 
@@ -150,6 +151,19 @@ def search():
         {"id": r[0], "name": r[1], "price": r[2], "hidden": r[3]} for r in rows
     ]
     return jsonify({"ok": True, "results": results})
+
+
+# DEMO ONLY: fake configuration, never actual credentials.
+@app.route("/debug/config")
+def debug_config():
+    """Intentionally exposes internal configuration without authentication."""
+    return jsonify({"database_host": "internal-db.demo.invalid", "api_key": "DEMO_NOT_A_REAL_SECRET"})
+
+
+@app.route("/public-config/<path:filename>")
+def public_config(filename):
+    """Intentionally serves the demo configuration directory publicly."""
+    return send_from_directory(str(Path(__file__).resolve().parent / "demo_config"), filename)
 
 
 if __name__ == "__main__":

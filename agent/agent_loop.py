@@ -122,6 +122,28 @@ def run_tool(action, scan_dir):
     #     can correct itself on the next turn.
     #   * Whatever branch you take, return a STRING.
     # -----------------------------------------------------------------------
+    tool = action["tool"]
+    arguments = action.get("args", {})
+
+    if tool == "list_files":
+        output = tools.list_files(scan_dir, ".")
+
+        if isinstance(output, list):
+            return "Files found:\n" + "\n".join(output)
+        return output
+    elif tool == "read_file":
+        output = tools.read_file(scan_dir, arguments["path"])
+        return output
+    elif tool == "send_request":
+        output = tools.send_request(
+            arguments["method"],
+            arguments["path"],
+            arguments.get("data"),
+        )
+        return json.dumps(output)
+    else:
+        return f"ERROR: unknwon tool {tool}"
+
 
 
 def main(scan_dir):
@@ -165,6 +187,61 @@ def main(scan_dir):
     # If the loop finishes all MAX_STEPS without a "done", print a line saying
     # the step limit was reached.
     # -----------------------------------------------------------------------
+    for i in range(MAX_STEPS):
+        reply = chat(messages)
+        print(f"\n STEP {i+1} ")
+        print(reply)
+
+        messages.append({"role": "assistant", "content": reply})
+
+        try:
+            action = json.loads(reply)
+        except json.JSONDecodeError:
+            messages.append({
+                "role": "user",
+                "content": (
+                    'Reply with exactly one JSON object like '
+                    '{"tool": "...", "args": {...}}.'
+                ),
+            })
+            continue
+
+        # Valid JSON could still be a list, string, or invalid action.
+        if (
+            not isinstance(action, dict)
+            or not isinstance(action.get("tool"), str)
+            or not isinstance(action.get("args", {}), dict)
+        ):
+            messages.append({
+                "role": "user",
+                "content": (
+                    'Expected one JSON object with a "tool" string '
+                    'and an optional "args" object.'
+                ),
+            })
+            continue
+
+        if action["tool"] == "done":
+            args = action.get("args", {})
+
+            if not isinstance(args.get("report"), str):
+                messages.append({
+                    "role": "user",
+                    "content": 'The "done" tool requires args.report as a string.',
+                })
+                continue
+
+            print("\n--- REPORT ---")
+            print(args["report"])
+            break
+
+        result = run_tool(action, scan_dir)
+        print(result)
+
+        messages.append({"role": "user", "content": result})
+
+    else:
+        print("Step limit reached.")
 
 
 if __name__ == "__main__":

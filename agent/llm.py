@@ -19,15 +19,6 @@ from openai import OpenAI
 # Read the .env file (if present) and put its values into the environment.
 load_dotenv()
 
-# Build the client once, when this module is first imported.
-_client = OpenAI(
-    api_key=os.environ.get("LLM_API_KEY"),
-    base_url=os.environ.get("LLM_BASE_URL"),
-)
-
-# Remember which model we were told to use.
-_model = os.environ.get("LLM_MODEL", "gemini-3.5-flash-lite")
-
 
 def chat(messages):
     """
@@ -41,8 +32,12 @@ def chat(messages):
 
     Returns: the assistant's reply as a plain string.
     """
-    response = _client.chat.completions.create(
-        model=_model,
+    model = os.environ.get("LLM_MODEL")
+    if not model or not os.environ.get("LLM_API_KEY"):
+        raise RuntimeError("Set LLM_MODEL and LLM_API_KEY before running an AI agent")
+    client = OpenAI(api_key=os.environ["LLM_API_KEY"], base_url=os.environ.get("LLM_BASE_URL"), timeout=30, max_retries=1)
+    response = client.chat.completions.create(
+        model=model,
         messages=messages,
         # temperature 0 = more focused / repeatable answers, which is nice while
         # learning because the agent behaves more predictably.
