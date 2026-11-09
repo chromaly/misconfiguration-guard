@@ -136,11 +136,11 @@ The source-only scanner (Red team) was aso applied to downloaded public projects
 | [Render Flask Hello World](https://github.com/render-examples/flask-hello-world) | `facfc73c44b35d00bb1f72e8986f0ea47cab0755` | Downloaded repository |
 | [DVWA](https://github.com/digininja/DVWA) | Revision not recorded in this writeup | Discoverable configuration and text files |
 
-These reports were saved locally as `flaskr-findings.md`, `digitalocean-findings.md`, `render-findings.md`, and `dwva-findings.md`. Model-generated findings are preliminary observations, not confirmed exploits.
+These reports were saved locally as `flaskr-findings.md`, `digitalocean-findings.md`, `render-findings.md`, and `dvwa-findings.md`. Model-generated findings are preliminary observations, not confirmed exploits.
 
 #### DVWA Compatibility Result
 
-Testing on the DVWA was meant to be edge case testing, as PHP application files were excluded by the discovery filter. Initially, I was trying to prove that the scanner would not work on all types of files, as it was not told to scan these types of files, yet however the scanner reported `allow_url_fopen = on` and `allow_url_incude = on` in `php.ini`. The PHP configuration files were still discoverable, demonstrating partial configuration-review compatibility.
+Testing on the DVWA was meant to be edge case testing, as PHP application files were excluded by the discovery filter. Initially, I was trying to prove that the scanner would not work on all types of files, as it was not told to scan these types of files, yet however the scanner reported `allow_url_fopen = on` and `allow_url_include = on` in `php.ini`. The PHP configuration files were still discoverable, demonstrating partial configuration-review compatibility.
 
 These settings alone do not prove an exploitable vulnerability. Application source analysis and runtime verification were not completed for this test.
 
@@ -187,7 +187,7 @@ Source: [OWASP LLM Prompt Injection Prevention Cheat Sheet](https://cheatsheetse
 
 - The CI still performs source-only review, and does not verify any running applications. This could be implemented in the future to test preliminary projects.
 - Findings and cited evidence still require human review to determine where they were successful or not.
-- File discovery excludes PHP, JavaScript, and TypeScript application sources. Although PHP was somewhat read by the DVWA test, it's still indecisive and should not be used as a sign of proper integration.
+- File discovery excludes `.php`, `.js`, and `.ts` application sources. Although PHP was somewhat read by the DVWA test, it's still indecisive and should not be used as a sign of proper integration.
 - The defender targets a single Python `app.py`, not entire folders or repositories.
 - Runtime verification of newly generated misconfiguration fixes are incomplete.
 - The original SQL injection flaws kept in `app.py` remain in the practice application since the model wasn't engineered to fix them, meaning other types of security vulnerabilities will still be present.
