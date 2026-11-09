@@ -1,3 +1,4 @@
+<img width="620" height="319" alt="Screenshot 2026-11-08 at 11 57 35 PM" src="https://github.com/user-attachments/assets/634d12f9-909c-4031-9740-1126923fa751" />
 # Misconfiguration Guard
 
 Misconfiguration Guard is an AI-assisted security program that investigates security misconfigurations in application source code and configuration files. It specifically focuses on publicly exposed configuration, error information, and diagnostic endpoints without authentication. These three vulnerabilities are part of the OWASP A02:2025 – Security Misconfiguration risk category. We are trying to mitigate the improper or insecure configuration of application servers, frameworks, or default settings that leave systems open to attack.
@@ -39,7 +40,7 @@ This scanner doesn't run the investigation or defense agent loops (Red or Blue t
 
 [View the demonstration pull request](https://github.com/chromaly/misconfiguration-guard/pull/1)
 
-<img width="625" height="322" alt="Screenshot 2026-11-08 at 11 57 00 PM" src="https://github.com/user-attachments/assets/cc0a196d-2ec8-4353-adf4-318608e455e7" />
+<img width="622" height="319" alt="Screenshot 2026-11-08 at 11 57 51 PM" src="https://github.com/user-attachments/assets/2da7d370-5ee0-4c86-be19-2add94fe7f73" />
 
 ### Agent Loop
 
