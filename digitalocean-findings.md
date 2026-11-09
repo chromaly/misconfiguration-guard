@@ -1,0 +1,1 @@
+Inspected external-digitalocean repository files (app.py, .do/app.yaml, gunicorn_config.py, .do/deploy.template.yaml). No exposed configuration files, debugging information, or unauthenticated diagnostic routes were found. The application setup appears clean and secure.

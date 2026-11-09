@@ -1,0 +1,1 @@
+Security misconfiguration identified in php.ini at line 4-5. The directives `allow_url_fopen = on` and `allow_url_include = on` are enabled, which significantly increase the risk of Remote File Inclusion (RFI) and Server-Side Request Forgery (SSRF) vulnerabilities in PHP applications. Runtime verification was not performed in CI mode.
